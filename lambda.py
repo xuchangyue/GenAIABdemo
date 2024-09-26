@@ -1,8 +1,9 @@
 import json
 import boto3
-import base64
 from io import BytesIO
-
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 # 初始化 AWS 服务客户端
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -22,11 +23,8 @@ def lambda_handler(event):
         response = s3.get_object(Bucket=bucket, Key=key)
         image_content = response['Body'].read()
         
-        # 将图像转换为 base64 编码
-        # image_base64 = base64.b64encode(image_content).decode('utf-8')
-        
         # 准备 Bedrock 请求体
-        user_message = "describe this picture."
+        user_message = "This ia a photo uploaded to a dating app from a user, describe this picture and get insight from it."
 
         messages = [
             {
@@ -37,11 +35,19 @@ def lambda_handler(event):
             ],
             }
         ]   
-
+        logger.info("Generating message with model %s", MODEL_ID)
         response = bedrock.converse(
-        modelId=MODEL_ID,
-        messages=messages,
-        )
+            modelId=MODEL_ID,
+            messages=messages,
+            inferenceConfig={"maxTokens":1000,"temperature":1},
+            additionalModelRequestFields={"top_k":250}
+            )
+        token_usage = response['usage']
+        logger.info("Input tokens: %s", token_usage['inputTokens'])
+        logger.info("Output tokens: %s", token_usage['outputTokens'])
+        logger.info("Total tokens: %s", token_usage['totalTokens'])
+        logger.info("Stop reason: %s", response['stopReason'])
+
         response_text = response["output"]["message"]["content"][0]["text"]
         
         # 将结果存储到 DynamoDB

@@ -4,12 +4,16 @@ import boto3
 from botocore.exceptions import ClientError
 import streamlit as st
 import json
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 # 替换为你的Slack Bot Token
 slack_token = "xoxb-1786157212486-7765839471783-ud2mi1wATeWpRjY8gT4s1S4l"
 slack_client = WebClient(token=slack_token)
 channel_id = "C07PBJVP0TT"
 table = 'ai-profile'
 claude_client = boto3.client("bedrock-runtime", region_name="us-east-1")
+MODEL_ID= "anthropic.claude-3-5-sonnet-20240620-v1:0"
 
 
 
@@ -65,8 +69,7 @@ def get_profile(table_name, user_id):
 
 def chat_assistant(chat_history, profile):
 
-    model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-    system="You are an AI verson of me on a dating app, chatting with my match.", 
+    system="You are acting like me on a dating app, be charming and natural living person", 
 # Start a conversation with the user message.
     user_message = f"""Claude, I want you to act like me on a dating app, my user id is U01PATFNBEW, chat with my match, her user id is U07PB22SN2D.
     I want to impress her and make her find me attractive. 
@@ -79,7 +82,7 @@ Here is our conversational history. It could be empty if there is no history:
 <history>
 {chat_history}
 </history>
-Here is my match's photo description and profile, you can get insight in this picture and have topic:
+Here is my match's photo description and profile, you can get insight and have topic:
 <profile>
 {profile}
 </profile>
@@ -93,12 +96,19 @@ Here is my match's photo description and profile, you can get insight in this pi
 
     try:
     # Send the message to the model, using a basic inference configuration.
+        logger.info("Generating message with model %s", MODEL_ID)
+
         response = claude_client.converse(
-            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            modelId=MODEL_ID,
             messages=conversation,
             inferenceConfig={"maxTokens":1000,"temperature":1},
             additionalModelRequestFields={"top_k":250}
         )
+        token_usage = response['usage']
+        logger.info("Input tokens: %s", token_usage['inputTokens'])
+        logger.info("Output tokens: %s", token_usage['outputTokens'])
+        logger.info("Total tokens: %s", token_usage['totalTokens'])
+        logger.info("Stop reason: %s", response['stopReason'])
 
     # Extract and print the response text.
         response_text = response["output"]["message"]["content"][0]["text"]
@@ -106,7 +116,7 @@ Here is my match's photo description and profile, you can get insight in this pi
         print(response_text)
 
     except (ClientError, Exception) as e:
-        print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        print(f"ERROR: Can't invoke '{MODEL_ID}'. Reason: {e}")
         exit(1)
 
 
@@ -117,34 +127,4 @@ if st.button('Generate response'):
         result = chat_assistant(get_history(channel_id), get_profile(table, "Alice"))
         st.write(result)
 
-
-# st.title("Dating Coach Joe")
-
-# # 初始化聊天历史
-# if "messages" not in st.session_state:
-#     st.session_state.messages = []
-
-# 显示聊天历史
-# for message in st.session_state.messages:
-#     with st.chat_message(message["role"]):
-#         st.markdown(message["content"])
-
-# # 用户输入
-# if prompt := st.chat_input("How is it going?"):
-#     # 添加用户消息到聊天历史
-#     st.session_state.messages.append({"role": "user", "content": prompt})
-#     with st.chat_message("user"):
-#         st.markdown(prompt)
-
-#     # 调用 Claude 3.5
-#     try:
-#         assistant_response=chat_assistant(get_history(channel_id), get_profile(table, "bob"), prompt)
-#         # 添加助手回复到聊天历史
-#         st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-#         print(assistant_response)
-#         with st.chat_message("assistant"):
-#             st.markdown(assistant_response)
-
-#     except ClientError as e:
-#         st.error(f"发生错误: {e}")
 
