@@ -13,7 +13,7 @@ MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 # 指定 DynamoDB 表名
 TABLE_NAME = 'ai-profile'
 
-def lambda_handler(event):
+def lambda_handler(event, context):
     # 从 S3 事件中获取桶名和对象键
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = event['Records'][0]['s3']['object']['key']
@@ -43,10 +43,10 @@ def lambda_handler(event):
             additionalModelRequestFields={"top_k":250}
             )
         token_usage = response['usage']
-        logger.info("Input tokens: %s", token_usage['inputTokens'])
-        logger.info("Output tokens: %s", token_usage['outputTokens'])
-        logger.info("Total tokens: %s", token_usage['totalTokens'])
-        logger.info("Stop reason: %s", response['stopReason'])
+        print("Input tokens:", token_usage['inputTokens'])
+        print("Output tokens:",token_usage['outputTokens'])
+        print("Total tokens:", token_usage['totalTokens'])
+        print("Stop reason:", response['stopReason'])
 
         response_text = response["output"]["message"]["content"][0]["text"]
         
@@ -54,7 +54,7 @@ def lambda_handler(event):
         table = dynamodb.Table(TABLE_NAME)
         table.put_item(
             Item={
-                'userid':"bob",
+                'userid':"Alice",
                 'ImageKey': key,
                 'Description': response_text
             }
@@ -71,43 +71,3 @@ def lambda_handler(event):
             'statusCode': 500,
             'body': json.dumps(f'Error processing image: {str(e)}')
         }
-event ={
-  "Records": [
-    {
-      "eventVersion": "2.0",
-      "eventSource": "aws:s3",
-      "awsRegion": "us-east-1",
-      "eventTime": "1970-01-01T00:00:00.000Z",
-      "eventName": "ObjectCreated:Put",
-      "userIdentity": {
-        "principalId": "EXAMPLE"
-      },
-      "requestParameters": {
-        "sourceIPAddress": "127.0.0.1"
-      },
-      "responseElements": {
-        "x-amz-request-id": "EXAMPLE123456789",
-        "x-amz-id-2": "EXAMPLE123/5678abcdefghijklambdaisawesome/mnopqrstuvwxyzABCDEFGH"
-      },
-      "s3": {
-        "s3SchemaVersion": "1.0",
-        "configurationId": "testConfigRule",
-        "bucket": {
-          "name": "xucy-us-east-1",
-          "ownerIdentity": {
-            "principalId": "EXAMPLE"
-          },
-          "arn": "arn:aws:s3:::example-bucket"
-        },
-        "object": {
-          "key": "20240709-095118.jpeg",
-          "size": 1024,
-          "eTag": "0123456789abcdef0123456789abcdef",
-          "sequencer": "0A1B2C3D4E5F678901"
-        }
-      }
-    }
-  ]
-}
-lambda_handler(event)
-
