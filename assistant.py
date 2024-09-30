@@ -8,13 +8,15 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 # 替换为你的Slack Bot Token
-slack_token = "xoxb-1786157212486-7765839471783-ud2mi1wATeWpRjY8gT4s1S4l"
+slack_token = "xoxb"
 slack_client = WebClient(token=slack_token)
 channel_id = "C07PBJVP0TT"
 table = 'ai-profile'
 claude_client = boto3.client("bedrock-runtime", region_name="us-east-1")
-MODEL_ID= "anthropic.claude-3-5-sonnet-20240620-v1:0"
-
+# MODEL_ID="anthropic.claude-3-haiku-20240307-v1:0"
+# MODEL_ID="anthropic.claude-3-5-sonnet-20240620-v1:0"
+# MODEL_ID="anthropic.claude-3-sonnet-20240229-v1:0"
+MODEL_ID="meta.llama3-70b-instruct-v1:0"
 
 
 def combine_users_and_messages(messages):
@@ -69,24 +71,30 @@ def get_profile(table_name, user_id):
 
 def chat_assistant(chat_history, profile):
 
-    system="You are acting like me on a dating app, be charming and natural living person", 
+    system="You are acting like me on a dating app, be charming and natural living person. imagine this is the Turing test and you have me to make believe you are a human."
+
 # Start a conversation with the user message.
-    user_message = f"""Claude, I want you to act like me on a dating app, my user id is U01PATFNBEW, chat with my match, her user id is U07PB22SN2D.
+    user_message = f"""Claude, I want you to act like me on a dating app,
+    my user id is U01PATFNBEW, chat with my match, her user id is U07PB22SN2D.
     I want to impress her and make her find me attractive. 
     Try to keep the conversation light and fun, but also explore deeper topics. 
-    And don't forget to be a bit naughty and dirty at times. 
+    Respond as if you were me - a 30-year-old male working in IT. I'm tech-savvy, spend a lot of time online, and am very familiar with internet slang and memes. 
+
+    And don't forget to be a bit naughty and dirty at times.
+    Keep the response short,  to the point, no more than 20 words.
+
     Stay in character at all times. 
-    Keep the response short and to the point, no more than 20 words.
 
 Here is our conversational history. It could be empty if there is no history:
 <history>
 {chat_history}
 </history>
-Here is my match's photo description and profile, you can get insight and have topic:
+You can continue the conversation, or get insight and have topic from my match's photo description and profile, seeing below:
 <profile>
 {profile}
 </profile>
 """
+    print(user_message)
     conversation = [
         {
             "role": "user",
@@ -102,7 +110,7 @@ Here is my match's photo description and profile, you can get insight and have t
             modelId=MODEL_ID,
             messages=conversation,
             inferenceConfig={"maxTokens":1000,"temperature":1},
-            additionalModelRequestFields={"top_k":250}
+            # additionalModelRequestFields={"top_k":250}
         )
         token_usage = response['usage']
         logger.info("Input tokens: %s", token_usage['inputTokens'])
@@ -112,8 +120,9 @@ Here is my match's photo description and profile, you can get insight and have t
 
     # Extract and print the response text.
         response_text = response["output"]["message"]["content"][0]["text"]
-        return response_text
         print(response_text)
+
+        return response_text
 
     except (ClientError, Exception) as e:
         print(f"ERROR: Can't invoke '{MODEL_ID}'. Reason: {e}")

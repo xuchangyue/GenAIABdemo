@@ -24,7 +24,14 @@ def lambda_handler(event, context):
         image_content = response['Body'].read()
         
         # 准备 Bedrock 请求体
-        user_message = "This ia a photo uploaded to a dating app from a user, describe this picture and get insight from it."
+        user_message = '''This ia a photo uploaded to a dating app from a user, describe this picture and get insight from it, and extract the social media tags.
+        Produce output in JSON format. Like this:
+        
+        {
+            "description": "A person smiling and wearing a blue shirt",
+            "tags": ["smiling", "blue", "shirt"]}
+        
+        '''
 
         messages = [
             {
